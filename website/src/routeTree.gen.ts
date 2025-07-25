@@ -12,6 +12,7 @@ import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContentsRouteImport } from './routes/contents'
 import { Route as IndexRouteImport } from './routes/index'
 import { ServerRoute as ApiAddclassesServerRouteImport } from './routes/api/addclasses'
 import { ServerRoute as ApiHelloSplatServerRouteImport } from './routes/api/hello.$'
@@ -22,6 +23,11 @@ const rootServerRouteImport = createServerRootRoute()
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContentsRoute = ContentsRouteImport.update({
+  id: '/contents',
+  path: '/contents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -47,27 +53,31 @@ const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contents': typeof ContentsRoute
   '/dashboard': typeof DashboardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contents': typeof ContentsRoute
   '/dashboard': typeof DashboardRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/contents': typeof ContentsRoute
   '/dashboard': typeof DashboardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard'
+  fullPaths: '/' | '/contents' | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard'
-  id: '__root__' | '/' | '/dashboard'
+  to: '/' | '/contents' | '/dashboard'
+  id: '__root__' | '/' | '/contents' | '/dashboard'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContentsRoute: typeof ContentsRoute
   DashboardRoute: typeof DashboardRoute
 }
 export interface FileServerRoutesByFullPath {
@@ -109,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contents': {
+      id: '/contents'
+      path: '/contents'
+      fullPath: '/contents'
+      preLoaderRoute: typeof ContentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -146,6 +163,7 @@ declare module '@tanstack/react-start/server' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContentsRoute: ContentsRoute,
   DashboardRoute: DashboardRoute,
 }
 export const routeTree = rootRouteImport

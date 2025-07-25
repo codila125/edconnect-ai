@@ -101,3 +101,19 @@ export const enrollments = pgTable("enrollments", {
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
 });
+
+export const contents = pgTable("contents", {
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    classId: text("class_id")
+        .notNull()
+        .references(() => classes.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    type: text("type", { enum: ["assignment", "material"] }).notNull(),
+    deadline: timestamp("deadline"), // <-- Only set for assignments
+    createdAt: timestamp("created_at")
+        .$defaultFn(() => /* @__PURE__ */ new Date())
+        .notNull(),
+});
