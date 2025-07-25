@@ -12,7 +12,7 @@ export default function SignIn() {
                     authClient.signIn.social({
                         provider: "google",
                         errorCallbackURL: "/error",
-                        callbackURL: "/", //This is the URL where the user will be redirected after a successful sign-in.
+                        callbackURL: "/api/hello/teacher", //This is the URL where the user will be redirected after a successful sign-in.
                         newUserCallbackURL: "/api/hello/teacher",
                         //When a new user signs in, they will be redirected to this URL if they are a teacher
                         // and their role is set to teacher.
@@ -30,7 +30,7 @@ export default function SignIn() {
                     authClient.signIn.social({
                         provider: "google",
                         errorCallbackURL: "/error",
-                        callbackURL: "/", //Similar to above but for student role
+                        callbackURL: "/api/hello/student", //Similar to above but for student role
                         newUserCallbackURL: "/api/hello/student", //Similar to above but for student role
                         disableRedirect: false,
                     })
