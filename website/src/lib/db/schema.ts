@@ -73,13 +73,20 @@ export const classes = pgTable("classes", {
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     className: text("class_name").notNull(),
-    classCode: text("class_code").notNull().unique(),
+    classCode: text("class_code")
+        .notNull()
+        .unique()
+        .$defaultFn(() => Math.floor(100000 + Math.random() * 900000).toString()), // 6-digit code
     description: text("description"),
     teacherId: text("teacher_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at")
         .$defaultFn(() => /* @__PURE__ */ new Date())
+        .notNull(),
+    activeStart: text("active_start")
+        .notNull(),
+    activeEnd: text("active_end")
         .notNull(),
 });
 

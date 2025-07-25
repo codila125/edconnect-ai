@@ -13,6 +13,7 @@ import { createServerRootRoute } from '@tanstack/react-start/server'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { ServerRoute as ApiAddclassesServerRouteImport } from './routes/api/addclasses'
 import { ServerRoute as ApiHelloSplatServerRouteImport } from './routes/api/hello.$'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth/$'
 
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAddclassesServerRoute = ApiAddclassesServerRouteImport.update({
+  id: '/api/addclasses',
+  path: '/api/addclasses',
+  getParentRoute: () => rootServerRouteImport,
 } as any)
 const ApiHelloSplatServerRoute = ApiHelloSplatServerRouteImport.update({
   id: '/api/hello/$',
@@ -65,27 +71,31 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/api/addclasses': typeof ApiAddclassesServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/api/addclasses': typeof ApiAddclassesServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/api/addclasses': typeof ApiAddclassesServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/auth/$' | '/api/hello/$'
+  fullPaths: '/api/addclasses' | '/api/auth/$' | '/api/hello/$'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/auth/$' | '/api/hello/$'
-  id: '__root__' | '/api/auth/$' | '/api/hello/$'
+  to: '/api/addclasses' | '/api/auth/$' | '/api/hello/$'
+  id: '__root__' | '/api/addclasses' | '/api/auth/$' | '/api/hello/$'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  ApiAddclassesServerRoute: typeof ApiAddclassesServerRoute
   ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
   ApiHelloSplatServerRoute: typeof ApiHelloSplatServerRoute
 }
@@ -110,6 +120,13 @@ declare module '@tanstack/react-router' {
 }
 declare module '@tanstack/react-start/server' {
   interface ServerFileRoutesByPath {
+    '/api/addclasses': {
+      id: '/api/addclasses'
+      path: '/api/addclasses'
+      fullPath: '/api/addclasses'
+      preLoaderRoute: typeof ApiAddclassesServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
     '/api/hello/$': {
       id: '/api/hello/$'
       path: '/api/hello/$'
@@ -135,6 +152,7 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiAddclassesServerRoute: ApiAddclassesServerRoute,
   ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
   ApiHelloSplatServerRoute: ApiHelloSplatServerRoute,
 }
