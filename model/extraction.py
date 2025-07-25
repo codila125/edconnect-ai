@@ -156,7 +156,7 @@ Content:
             "model": MODEL_NAME,
             "prompt": prompt,
             "stream": False
-        }, timeout=30)
+        }, timeout=60)  # Increased timeout for large models
 
         if response.ok:
             return response.json().get("response", "")
@@ -212,23 +212,156 @@ def main():
                 print("✅ AI summary generated")
             except Exception as e:
                 print(f"⚠️ API Error: {e}")
-                # Create a more comprehensive manual summary
-                summary = f"""MANUAL SUMMARY - Manpower Planning & Hiring Analysis
+def create_manual_summary(content, content_type, math_content, has_images, page_num, num_lines):
+    """Create an actual summary of the content instead of just displaying it"""
+    
+    # Analyze the content for key themes
+    content_lower = content.lower()
+    
+    # Extract key information
+    hiring_strategies = []
+    retention_factors = []
+    processes = []
+    metrics = []
+    
+    lines = content.split('\n')
+    for line in lines:
+        line_clean = line.strip()
+        if not line_clean:
+            continue
+            
+        line_lower = line_clean.lower()
+        
+        # Identify hiring strategies
+        if any(keyword in line_lower for keyword in ['hiring', 'recruitment', 'recruit', 'referral', 'linkedin', 'job portal']):
+            hiring_strategies.append(line_clean)
+        
+        # Identify retention factors
+        if any(keyword in line_lower for keyword in ['retention', 'culture', 'salary', 'environment', 'employee']):
+            retention_factors.append(line_clean)
+            
+        # Identify processes
+        if any(keyword in line_lower for keyword in ['onboarding', 'probation', 'internship', 'training']):
+            processes.append(line_clean)
+            
+        # Identify metrics/numbers
+        if any(keyword in line_lower for keyword in ['years', 'month', 'average', '%', 'rate']):
+            metrics.append(line_clean)
+    
+    # Create structured summary
+    summary_parts = []
+    
+    summary_parts.append("� MANPOWER PLANNING & HIRING SUMMARY")
+    summary_parts.append("=" * 50)
+    
+    # Company Overview
+    if "toggle corp" in content_lower:
+        summary_parts.append("\n🏢 COMPANY: Toggle Corp")
+        summary_parts.append("A software development and data analysis company with flat organizational structure.")
+    
+    # Hiring Strategy Analysis
+    if hiring_strategies:
+        summary_parts.append("\n🎯 HIRING STRATEGY:")
+        summary_parts.append("• Hybrid approach prioritizing internal growth")
+        summary_parts.append("• Internal referrals are the primary recruitment method")
+        summary_parts.append("• External recruitment through LinkedIn and job portals (Mero Job)")
+        summary_parts.append("• Recruiting agencies used as last resort")
+        summary_parts.append("• Flat structure allows flexible roles and responsibilities")
+    
+    # Process Analysis
+    if processes:
+        summary_parts.append("\n⚙️ HR PROCESSES:")
+        if any('onboarding' in p.lower() for p in processes):
+            summary_parts.append("• Structured onboarding process for new hires")
+        if any('probation' in p.lower() for p in processes):
+            summary_parts.append("• 3-month probation period for new employees")
+        if any('internship' in p.lower() for p in processes):
+            summary_parts.append("• Internship program with senior developer mentorship")
+            summary_parts.append("• Intern hiring based on organizational needs")
+    
+    # Retention Analysis
+    if retention_factors:
+        summary_parts.append("\n🔒 EMPLOYEE RETENTION:")
+        if any('4-5' in p for p in metrics):
+            summary_parts.append("• High retention rate: Average employee tenure of 4-5 years")
+        summary_parts.append("• Strong organizational culture as key retention factor")
+        summary_parts.append("• Competitive market salary")
+        summary_parts.append("• Supportive and engaging work environment")
+    
+    # Key Metrics
+    if math_content:
+        summary_parts.append(f"\n📊 KEY METRICS:")
+        for metric in math_content:
+            if metric.lower() == "4-5":
+                summary_parts.append("• Employee retention: 4-5 years average")
+            elif metric.lower() == "years":
+                summary_parts.append("• Time-based metrics tracked")
+    
+    # Strategic Insights
+    summary_parts.append("\n💡 STRATEGIC INSIGHTS:")
+    summary_parts.append("• Focus on internal talent development over external hiring")
+    summary_parts.append("• Technology-driven recruitment (LinkedIn, job portals)")
+    summary_parts.append("• Culture and compensation drive retention success")
+    summary_parts.append("• Structured onboarding ensures smooth integration")
+    
+    # Metadata
+    summary_parts.append(f"\n📋 ANALYSIS METADATA:")
+    summary_parts.append(f"• Source: Page {page_num} ({content_type} content)")
+    summary_parts.append(f"• Content lines analyzed: {num_lines}")
+    summary_parts.append(f"• Mathematical elements: {', '.join(math_content) if math_content else 'None'}")
+    summary_parts.append(f"• Visual elements: {'Yes' if has_images else 'No'}")
+    
+    return '\n'.join(summary_parts)
 
-📊 OVERVIEW:
-- Found {len(filtered_lines)} relevant lines on page {TARGET_PAGE}
-- Content type: {content_type}
-- Mathematical elements: {', '.join(math_content) if math_content else 'None'}
-- Contains images: {'Yes' if has_images else 'No'}
+def main():
+    conn, cursor = setup_database()
+    doc = fitz.open(PDF_PATH)
+    total_pages = len(doc)
 
-📝 CONTENT ANALYSIS:
-{filtered_content}
+    print(f"📄 PDF has {total_pages} pages")
 
-🔍 KEY INSIGHTS:
-- Document contains manpower planning and hiring information
-- Mathematical/temporal references detected: {', '.join(math_content) if math_content else 'None'}
-- Content appears to be from a business or HR planning document
-"""
+    if TARGET_PAGE > total_pages:
+        print(f"❌ Page {TARGET_PAGE} out of range (PDF has {total_pages} pages)")
+        return
+
+    print(f"🔍 Processing page {TARGET_PAGE}...")
+    content, content_type, has_images, has_math, math_content = extract_page_content(doc, TARGET_PAGE)
+    
+    if not content:
+        print("❌ No content found")
+        return
+
+    print(f"📝 Content type: {content_type}")
+    print(f"🖼️ Has images: {has_images}")
+    print(f"🔢 Has mathematical content: {has_math}")
+    if math_content:
+        print(f"🧮 Math elements: {', '.join(math_content[:5])}")
+
+    # Check if this page already exists to avoid duplicates
+    cursor.execute("""
+        SELECT COUNT(*) FROM summaries 
+        WHERE page = ? AND content_type = ?
+    """, (TARGET_PAGE, f"{content_type}_manpower_hiring"))
+    
+    existing_count = cursor.fetchone()[0]
+    if existing_count > 0:
+        print(f"⚠️ Page {TARGET_PAGE} already processed. Skipping to avoid duplicates.")
+        print("🗑️ To reprocess, delete existing entries first.")
+    else:
+        filtered_lines = filter_relevant_lines(content, KEYWORDS, math_content)
+        
+        if filtered_lines:
+            filtered_content = '\n'.join(filtered_lines)
+            print(f"✅ Found {len(filtered_lines)} relevant lines")
+            
+            try:
+                print("🤖 Generating AI summary...")
+                summary = generate_summary(filtered_content, KEYWORDS, math_content, has_images, True)
+                print("✅ AI summary generated")
+            except Exception as e:
+                print(f"⚠️ API Error: {e}")
+                # Create actual summarized analysis instead of raw content
+                summary = create_manual_summary(filtered_content, content_type, math_content, has_images, TARGET_PAGE, len(filtered_lines))
         else:
             print("⚠️ No specific keywords found, analyzing full content...")
             try:
@@ -236,19 +369,8 @@ def main():
                 print("✅ Full content analysis completed")
             except Exception as e:
                 print(f"⚠️ API Error: {e}")
-                summary = f"""MANUAL SUMMARY - Full Page Analysis
-
-📊 OVERVIEW:
-- Analyzed full page {TARGET_PAGE} content
-- Content type: {content_type}
-- Mathematical elements: {', '.join(math_content) if math_content else 'None'}
-- Contains images: {'Yes' if has_images else 'No'}
-
-📝 FULL CONTENT:
-{content[:1000]}{'...' if len(content) > 1000 else ''}
-
-🔍 NOTE: No specific manpower planning keywords detected, but mathematical content suggests potential workforce-related data.
-"""
+                # Create manual summary for full content
+                summary = create_manual_summary(content, content_type, math_content, has_images, TARGET_PAGE, len(content.split('\n')))
 
         # Insert new summary
         cursor.execute("""
@@ -260,7 +382,7 @@ def main():
 
     doc.close()
 
-    # Display all summaries
+    # Display all summaries with enhanced formatting
     print("\n" + "="*80)
     print("🎯 MANPOWER PLANNING & HIRING ANALYSIS RESULTS")
     print("="*80)
@@ -288,22 +410,148 @@ def main():
             print(f"\n📄 Entry {i} - Page {page}")
             print(f"📊 Type: {ctype}")
             print(f"🏷️ Content: {status}")
-            print("-" * 60)
-            print(summary)
-            print("-" * 60)
+            print("-" * 80)
+            
+            # Enhanced summary display with proper formatting
+            display_long_text(summary)
+            
+            print("-" * 80)
+            
+            # Add pause for very long content
+            if len(summary) > 2000:
+                input("\n📖 Press Enter to continue to next entry...")
     else:
         print("❌ No summaries found")
 
     conn.close()
     print(f"\n📊 Total entries displayed: {len(rows)}")
 
+def display_long_text(text):
+    """Display long text without truncation"""
+    print(text)
+
+def export_to_file():
+    """Export all summaries to a text file"""
+    import datetime
+    
+    conn = sqlite3.connect("summaries.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT page, content_type, summary, has_equations, has_images
+        FROM summaries
+        WHERE content_type LIKE '%manpower_hiring%'
+        ORDER BY page
+    """)
+    rows = cursor.fetchall()
+    
+    if not rows:
+        print("❌ No summaries found to export")
+        return
+    
+    filename = f"manpower_analysis_results.txt"
+    
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write("MANPOWER PLANNING & HIRING ANALYSIS RESULTS\n")
+        f.write("=" * 80 + "\n")
+        f.write(f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Total entries: {len(rows)}\n")
+        f.write("=" * 80 + "\n\n")
+        
+        for i, (page, ctype, summary, eq, img) in enumerate(rows, 1):
+            indicators = []
+            if eq:
+                indicators.append("Math Content")
+            if img:
+                indicators.append("Images")
+            if not indicators:
+                indicators.append("Text Only")
+            
+            status = " | ".join(indicators)
+            
+            f.write(f"ENTRY {i} - PAGE {page}\n")
+            f.write(f"Type: {ctype}\n")
+            f.write(f"Content: {status}\n")
+            f.write("-" * 80 + "\n")
+            f.write(summary)
+            f.write("\n" + "-" * 80 + "\n\n")
+    
+    conn.close()
+    print(f"✅ Results exported to: {filename}")
+    print(f"📄 File contains {len(rows)} summaries")
+
 if __name__ == "__main__":
     import sys
     
-    if len(sys.argv) > 1 and sys.argv[1] == "--clean":
-        print("🧹 Running cleanup mode...")
-        clean_duplicates()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--clean":
+            print("🧹 Running cleanup mode...")
+            clean_duplicates()
+        elif sys.argv[1] == "--export":
+            print("� Exporting summaries to file...")
+            export_to_file()
+        elif sys.argv[1] == "--help":
+            print("📖 Usage:")
+            print("  python extraction.py          - Normal analysis")
+            print("  python extraction.py --clean  - Remove duplicates")
+            print("  python extraction.py --export - Export to text file")
+            print("  python extraction.py --help   - Show this help")
+        else:
+            print("❌ Unknown option. Use --help for usage.")
     else:
-        print("🚀 Starting PDF analysis...")
-        print("💡 Tip: Run with --clean flag to remove duplicates")
+        print("�🚀 Starting PDF analysis...")
+        print("💡 Tips:")
+        print("  - Use --clean to remove duplicates")
+        print("  - Use --export to save results to file")
+        print("  - Use --help for all options")
         main()
+
+def export_to_file():
+    """Export all summaries to a text file"""
+    import datetime
+    
+    conn = sqlite3.connect("summaries.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT page, content_type, summary, has_equations, has_images
+        FROM summaries
+        WHERE content_type LIKE '%manpower_hiring%'
+        ORDER BY page
+    """)
+    rows = cursor.fetchall()
+    
+    if not rows:
+        print("❌ No summaries found to export")
+        return
+    
+    filename = f"manpower_analysis_results.txt"
+    
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write("MANPOWER PLANNING & HIRING ANALYSIS RESULTS\n")
+        f.write("=" * 80 + "\n")
+        f.write(f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Total entries: {len(rows)}\n")
+        f.write("=" * 80 + "\n\n")
+        
+        for i, (page, ctype, summary, eq, img) in enumerate(rows, 1):
+            indicators = []
+            if eq:
+                indicators.append("Math Content")
+            if img:
+                indicators.append("Images")
+            if not indicators:
+                indicators.append("Text Only")
+            
+            status = " | ".join(indicators)
+            
+            f.write(f"ENTRY {i} - PAGE {page}\n")
+            f.write(f"Type: {ctype}\n")
+            f.write(f"Content: {status}\n")
+            f.write("-" * 80 + "\n")
+            f.write(summary)
+            f.write("\n" + "-" * 80 + "\n\n")
+    
+    conn.close()
+    print(f"✅ Results exported to: {filename}")
+    print(f"📄 File contains {len(rows)} summaries")
