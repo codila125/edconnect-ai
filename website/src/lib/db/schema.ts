@@ -67,3 +67,30 @@ export const verification = pgTable("verification", {
         () => /* @__PURE__ */ new Date()
     ),
 });
+
+export const classes = pgTable("classes", {
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    className: text("class_name").notNull(),
+    classCode: text("class_code").notNull().unique(),
+    description: text("description"),
+    teacherId: text("teacher_id")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at")
+        .$defaultFn(() => /* @__PURE__ */ new Date())
+        .notNull(),
+});
+
+export const enrollments = pgTable("enrollments", {
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    classId: text("class_id")
+        .notNull()
+        .references(() => classes.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+});

@@ -4,7 +4,7 @@
 // role in the database using Drizzle ORM. It logs a message indicating the role assignment.
 // The role comes from user interface through API and userID comes from API
 import db from "./drizzle";
-import * as schema from "./auth-schema";
+import * as schema from "./schema";
 import { eq } from "drizzle-orm";
 
 export default async function sendRole({

@@ -8,7 +8,7 @@ import { createServerFileRoute } from "@tanstack/react-start/server";
 import { auth } from "../../lib/auth/auth";
 import sendRole from "../../lib/db/role";
 import db from "../../lib/db/drizzle";
-import * as schema from "../../lib/db/auth-schema";
+import * as schema from "../../lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "@tanstack/react-router";
 
