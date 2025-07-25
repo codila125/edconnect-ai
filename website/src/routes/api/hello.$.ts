@@ -10,6 +10,7 @@ import sendRole from "../../lib/db/role";
 import db from "../../lib/db/drizzle";
 import * as schema from "../../lib/db/auth-schema";
 import { eq } from "drizzle-orm";
+import { redirect } from "@tanstack/react-router";
 
 export const ServerRoute = createServerFileRoute("/api/hello/$").methods({
     GET: async ({ request, params }) => {
@@ -38,6 +39,12 @@ export const ServerRoute = createServerFileRoute("/api/hello/$").methods({
             .limit(1);
 
         const existingRole = existingRoleResult[0]?.role; // Get the existing role from the query result
+
+        if (existingRole === role) {
+            throw redirect({
+                to: `/dashboard`, // If the user already has the requested role, redirect to the dashboard
+            });
+        }
 
         if (existingRole === "teacher" || existingRole === "student") {
             return new Response(
