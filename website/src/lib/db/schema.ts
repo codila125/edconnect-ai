@@ -111,6 +111,7 @@ export const contents = pgTable("contents", {
         .references(() => classes.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     body: text("body").notNull(),
+    url: text("url"), 
     type: text("type", { enum: ["assignment", "material"] }).notNull(),
     deadline: timestamp("deadline"), // <-- Only set for assignments
     createdAt: timestamp("created_at")
