@@ -8,7 +8,9 @@ export default defineConfig({
         port: 3000,
     },
     plugins: [
-        tsConfigPaths(),
+        tsConfigPaths({
+            projects: ["./tsconfig.json"],
+        }),
         tanstackStart({ customViteReactPlugin: true }),
         viteReact(),
     ],
