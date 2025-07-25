@@ -12,7 +12,9 @@ import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContentsRouteImport } from './routes/contents'
 import { Route as IndexRouteImport } from './routes/index'
+import { ServerRoute as ApiAddclassesServerRouteImport } from './routes/api/addclasses'
 import { ServerRoute as ApiHelloSplatServerRouteImport } from './routes/api/hello.$'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth/$'
 
@@ -23,10 +25,20 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContentsRoute = ContentsRouteImport.update({
+  id: '/contents',
+  path: '/contents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAddclassesServerRoute = ApiAddclassesServerRouteImport.update({
+  id: '/api/addclasses',
+  path: '/api/addclasses',
+  getParentRoute: () => rootServerRouteImport,
 } as any)
 const ApiHelloSplatServerRoute = ApiHelloSplatServerRouteImport.update({
   id: '/api/hello/$',
@@ -41,51 +53,59 @@ const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contents': typeof ContentsRoute
   '/dashboard': typeof DashboardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contents': typeof ContentsRoute
   '/dashboard': typeof DashboardRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/contents': typeof ContentsRoute
   '/dashboard': typeof DashboardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard'
+  fullPaths: '/' | '/contents' | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard'
-  id: '__root__' | '/' | '/dashboard'
+  to: '/' | '/contents' | '/dashboard'
+  id: '__root__' | '/' | '/contents' | '/dashboard'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContentsRoute: typeof ContentsRoute
   DashboardRoute: typeof DashboardRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/api/addclasses': typeof ApiAddclassesServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/api/addclasses': typeof ApiAddclassesServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/api/addclasses': typeof ApiAddclassesServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/auth/$' | '/api/hello/$'
+  fullPaths: '/api/addclasses' | '/api/auth/$' | '/api/hello/$'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/auth/$' | '/api/hello/$'
-  id: '__root__' | '/api/auth/$' | '/api/hello/$'
+  to: '/api/addclasses' | '/api/auth/$' | '/api/hello/$'
+  id: '__root__' | '/api/addclasses' | '/api/auth/$' | '/api/hello/$'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  ApiAddclassesServerRoute: typeof ApiAddclassesServerRoute
   ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
   ApiHelloSplatServerRoute: typeof ApiHelloSplatServerRoute
 }
@@ -99,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contents': {
+      id: '/contents'
+      path: '/contents'
+      fullPath: '/contents'
+      preLoaderRoute: typeof ContentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -110,6 +137,13 @@ declare module '@tanstack/react-router' {
 }
 declare module '@tanstack/react-start/server' {
   interface ServerFileRoutesByPath {
+    '/api/addclasses': {
+      id: '/api/addclasses'
+      path: '/api/addclasses'
+      fullPath: '/api/addclasses'
+      preLoaderRoute: typeof ApiAddclassesServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
     '/api/hello/$': {
       id: '/api/hello/$'
       path: '/api/hello/$'
@@ -129,12 +163,14 @@ declare module '@tanstack/react-start/server' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContentsRoute: ContentsRoute,
   DashboardRoute: DashboardRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiAddclassesServerRoute: ApiAddclassesServerRoute,
   ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
   ApiHelloSplatServerRoute: ApiHelloSplatServerRoute,
 }
