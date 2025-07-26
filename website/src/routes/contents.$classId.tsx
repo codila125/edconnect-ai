@@ -5,11 +5,16 @@ import ChatModule from "@/components/chat";
 import { createServerFn } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
 import { auth } from "@/lib/auth/auth";
+import db from "@/lib/db/drizzle";
+import * as schema from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+
 interface Content {
   id: string;
   title: string;
   body: string;
   classId: string;
+  summary: string;
 }
 
 interface ApiResponse {
@@ -18,10 +23,9 @@ interface ApiResponse {
   error?: string;
 }
 
-
 const authStateFn = createServerFn({
-    method: "GET", // HTTP method to use
-    response: "data", // Response handling mode
+    method: "GET",
+    response: "data",
 }).handler(async () => {
     const request = getWebRequest();
     if (!request) {
@@ -30,29 +34,91 @@ const authStateFn = createServerFn({
 
     const session = await auth.api.getSession(request);
 
-    return { session: session };
+    if (!session) {
+        throw new Error("Unauthorized");
+    }
+
+    const userId = await db
+    .select({ id: schema.session.userId })
+    .from(schema.session)
+    .where(eq(schema.session.userId, session?.user.id))
+    .execute();
+    console.log("User ID:", userId);
+
+    if (!userId || userId.length === 0) {
+        throw new Error("User not found");
+    }
+
+    const userIdValue = userId[0]?.id;
+    const classId = await db
+    .select({ id: schema.enrollments.classId })
+    .from(schema.enrollments)
+    .where(eq(schema.enrollments.studentId, userIdValue))
+    .execute();
+    console.log("Class ID:", classId);
+
+    if (!classId || classId.length === 0) {
+       const classId2 = await db
+       .select({ id: schema.classes.id })
+       .from(schema.classes)
+       .where(eq(schema.classes.teacherId, userIdValue))
+       .execute();
+       console.log("Class ID (Teacher):", classId2);
+       return { session: session, urls: [] };
+    }
+
+    // Get all contents for the class
+    const contentsData = await db
+    .select({ 
+        materialId: schema.contents.materialId 
+    })
+    .from(schema.contents)
+    .where(eq(schema.contents.classId, classId[0]?.id))
+    .execute();
+
+    if (!contentsData || contentsData.length === 0) {
+        return { session: session, urls: [] };
+    }
+
+    // Get all material URLs for the contents
+    const materialIds = contentsData.map(content => content.materialId);
+    const urls = await db
+    .select({ 
+        url: schema.materials.url,
+        name: schema.materials.name,
+        id: schema.materials.id
+    })
+    .from(schema.materials)
+    .where(eq(schema.materials.id, materialIds[0])) // You might want to use `in` operator for multiple IDs
+    .execute();
+
+    return { session: session, urls: urls };
 });
 
 export const Route = createFileRoute("/contents/$classId")({
   loader: async () => {
-    const { session } = await authStateFn();
-    return { session };
+    const result = await authStateFn();
+    if (!result) {
+      return { session: undefined, urls: [] };
+    }
+    const { session, urls } = result;
+    return { session, urls };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const params = Route.useParams();
-  const { session } = Route.useLoaderData();
+  const { session, urls } = Route.useLoaderData();
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   console.log("RouteComponent session:", session?.user.id);
-  // You'll need to get the current user ID somehow - this is just an example
+  console.log("Material URLs:", urls);
+  
   const [currentUserId, setCurrentUserId] = useState(session?.user.id || "");
   
   useEffect(() => {
-    // Set user ID from localStorage after component mounts
     if (typeof window !== 'undefined') {
       const storedUserId = localStorage.getItem('userId');
       if (storedUserId) {
@@ -110,7 +176,7 @@ function RouteComponent() {
     return (
       <div>
         <h1>Error</h1>
-        <p style={{ color: "red" }}>{error}</p>
+        <p>{error}</p>
         <button onClick={() => window.location.reload()}>
           Try Again
         </button>
@@ -122,19 +188,34 @@ function RouteComponent() {
     <>
       <div>
         <h1>Contents for Class</h1>
+        
+
+        {/* Display Contents */}
         {contents.length > 0 ? (
           <ul>
             {contents.map((content) => (
-              <li
-                key={content.id}
-                style={{
-                  marginBottom: "1rem",
-                  padding: "1rem",
-                  border: "1px solid #ccc",
-                }}
-              >
+              <li key={content.id}>
                 <h3>{content.title}</h3>
                 <p>{content.body}</p>
+                {urls && urls.length > 0 && (
+                  <div>
+                    <h3>Class Materials</h3>
+                    {urls.map((material, index) => (
+                      <div key={material.id || index}>
+                        <p><strong>{material.name}</strong></p>
+                        <a 
+                          href={material.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          >
+                          {material.url}
+                        </a>
+                      </div>
+                    ))}
+                    <h2>Summary</h2>
+                    <p>{content.summary}</p>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -144,12 +225,11 @@ function RouteComponent() {
       </div>
 
       <div>
-        {session?.user.role === "teacher" && (<>
+        {session?.user.role === "teacher" && (
           <AddContent classId={params.classId} />
-        </>)}
+        )}
       </div>
 
-      {/* Add the Chat Module */}
       <div>
         <h2>Class Chat</h2>
         <ChatModule 

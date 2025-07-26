@@ -119,6 +119,7 @@ export const contents = pgTable("contents", {
     createdAt: timestamp("created_at")
         .$defaultFn(() => /* @__PURE__ */ new Date())
         .notNull(),
+    summary: text("summary"), // Optional summary for the content
 });
 
 export const materials = pgTable("materials", {
