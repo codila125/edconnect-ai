@@ -43,7 +43,6 @@ const authStateFn = createServerFn({
     .from(schema.session)
     .where(eq(schema.session.userId, session?.user.id))
     .execute();
-    console.log("User ID:", userId);
 
     if (!userId || userId.length === 0) {
         throw new Error("User not found");
@@ -55,7 +54,6 @@ const authStateFn = createServerFn({
     .from(schema.enrollments)
     .where(eq(schema.enrollments.studentId, userIdValue))
     .execute();
-    console.log("Class ID:", classId);
 
     if (!classId || classId.length === 0) {
        const classId2 = await db
@@ -113,8 +111,6 @@ function RouteComponent() {
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  console.log("RouteComponent session:", session?.user.id);
-  console.log("Material URLs:", urls);
   
   const [currentUserId, setCurrentUserId] = useState(session?.user.id || "");
   

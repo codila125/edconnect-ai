@@ -88,10 +88,6 @@ function RouteComponent() {
 
     return (
         <>
-            <div>Hello "/dashboard"!</div>
-            <div>
-                <p>Role: {role}</p>
-            </div>
             <div>
                 {session && (
                     <>
