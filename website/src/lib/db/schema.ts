@@ -111,10 +111,21 @@ export const contents = pgTable("contents", {
         .references(() => classes.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     body: text("body").notNull(),
-    url: text("url"), 
+    materialId: text("material_id")
+        .notNull()
+        .references(() => materials.id, { onDelete: "cascade" }),
     type: text("type", { enum: ["assignment", "material"] }).notNull(),
-    deadline: timestamp("deadline"), // <-- Only set for assignments
+    deadline: text("deadline"), // <-- Only set for assignments
     createdAt: timestamp("created_at")
         .$defaultFn(() => /* @__PURE__ */ new Date())
         .notNull(),
 });
+
+export const materials = pgTable("materials", {
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    url: text("url").notNull(),
+    name: text("name").notNull(),
+});
+

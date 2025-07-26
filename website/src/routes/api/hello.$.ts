@@ -71,9 +71,8 @@ export const ServerRoute = createServerFileRoute("/api/hello/$").methods({
         // update the user's role in the database
         // wait for the role to be updated
 
-        return new Response(JSON.stringify({ role }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
+        redirect({
+            to: `/dashboard`, // Redirect to the dashboard after assigning the role
         });
     },
 });

@@ -14,6 +14,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContentsClassIdRouteImport } from './routes/contents.$classId'
+import { ServerRoute as ApiJoinclassServerRouteImport } from './routes/api/joinclass'
+import { ServerRoute as ApiAddcontentsServerRouteImport } from './routes/api/addcontents'
 import { ServerRoute as ApiAddclassesServerRouteImport } from './routes/api/addclasses'
 import { ServerRoute as ApiHelloSplatServerRouteImport } from './routes/api/hello.$'
 import { ServerRoute as ApiContentsSplatServerRouteImport } from './routes/api/contents.$'
@@ -35,6 +37,16 @@ const ContentsClassIdRoute = ContentsClassIdRouteImport.update({
   id: '/contents/$classId',
   path: '/contents/$classId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiJoinclassServerRoute = ApiJoinclassServerRouteImport.update({
+  id: '/api/joinclass',
+  path: '/api/joinclass',
+  getParentRoute: () => rootServerRouteImport,
+} as any)
+const ApiAddcontentsServerRoute = ApiAddcontentsServerRouteImport.update({
+  id: '/api/addcontents',
+  path: '/api/addcontents',
+  getParentRoute: () => rootServerRouteImport,
 } as any)
 const ApiAddclassesServerRoute = ApiAddclassesServerRouteImport.update({
   id: '/api/addclasses',
@@ -88,12 +100,16 @@ export interface RootRouteChildren {
 }
 export interface FileServerRoutesByFullPath {
   '/api/addclasses': typeof ApiAddclassesServerRoute
+  '/api/addcontents': typeof ApiAddcontentsServerRoute
+  '/api/joinclass': typeof ApiJoinclassServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/contents/$': typeof ApiContentsSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
 }
 export interface FileServerRoutesByTo {
   '/api/addclasses': typeof ApiAddclassesServerRoute
+  '/api/addcontents': typeof ApiAddcontentsServerRoute
+  '/api/joinclass': typeof ApiJoinclassServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/contents/$': typeof ApiContentsSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
@@ -101,6 +117,8 @@ export interface FileServerRoutesByTo {
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
   '/api/addclasses': typeof ApiAddclassesServerRoute
+  '/api/addcontents': typeof ApiAddcontentsServerRoute
+  '/api/joinclass': typeof ApiJoinclassServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
   '/api/contents/$': typeof ApiContentsSplatServerRoute
   '/api/hello/$': typeof ApiHelloSplatServerRoute
@@ -109,14 +127,24 @@ export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
   fullPaths:
     | '/api/addclasses'
+    | '/api/addcontents'
+    | '/api/joinclass'
     | '/api/auth/$'
     | '/api/contents/$'
     | '/api/hello/$'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/addclasses' | '/api/auth/$' | '/api/contents/$' | '/api/hello/$'
+  to:
+    | '/api/addclasses'
+    | '/api/addcontents'
+    | '/api/joinclass'
+    | '/api/auth/$'
+    | '/api/contents/$'
+    | '/api/hello/$'
   id:
     | '__root__'
     | '/api/addclasses'
+    | '/api/addcontents'
+    | '/api/joinclass'
     | '/api/auth/$'
     | '/api/contents/$'
     | '/api/hello/$'
@@ -124,6 +152,8 @@ export interface FileServerRouteTypes {
 }
 export interface RootServerRouteChildren {
   ApiAddclassesServerRoute: typeof ApiAddclassesServerRoute
+  ApiAddcontentsServerRoute: typeof ApiAddcontentsServerRoute
+  ApiJoinclassServerRoute: typeof ApiJoinclassServerRoute
   ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
   ApiContentsSplatServerRoute: typeof ApiContentsSplatServerRoute
   ApiHelloSplatServerRoute: typeof ApiHelloSplatServerRoute
@@ -156,6 +186,20 @@ declare module '@tanstack/react-router' {
 }
 declare module '@tanstack/react-start/server' {
   interface ServerFileRoutesByPath {
+    '/api/joinclass': {
+      id: '/api/joinclass'
+      path: '/api/joinclass'
+      fullPath: '/api/joinclass'
+      preLoaderRoute: typeof ApiJoinclassServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/addcontents': {
+      id: '/api/addcontents'
+      path: '/api/addcontents'
+      fullPath: '/api/addcontents'
+      preLoaderRoute: typeof ApiAddcontentsServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
     '/api/addclasses': {
       id: '/api/addclasses'
       path: '/api/addclasses'
@@ -197,6 +241,8 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
   ApiAddclassesServerRoute: ApiAddclassesServerRoute,
+  ApiAddcontentsServerRoute: ApiAddcontentsServerRoute,
+  ApiJoinclassServerRoute: ApiJoinclassServerRoute,
   ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
   ApiContentsSplatServerRoute: ApiContentsSplatServerRoute,
   ApiHelloSplatServerRoute: ApiHelloSplatServerRoute,

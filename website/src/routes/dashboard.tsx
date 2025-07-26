@@ -8,6 +8,7 @@ import * as schema from "../lib/db/schema";
 import { eq } from "drizzle-orm";
 import AddClass from "@/components/add-class";
 import Classes from "@/components/show-class";
+import JoinClass from "@/components/join-class";
 
 const authStateFn = createServerFn({
     method: "GET", // HTTP method to use
@@ -32,24 +33,58 @@ const authStateFn = createServerFn({
         .where(eq(schema.user.id, session.session.userId))
         .limit(1);
 
-    const classes = await db // Fetch classes from the database
-        .select() // Select all columns
-        .from(schema.classes)
-        .where(eq(schema.classes.teacherId, session.session.userId)); // Assuming you have an 'active' field
+    if (existingRoleResult[0]?.role === "teacher") {
+        const classes = await db // Fetch classes from the database
+            .select() // Select all columns
+            .from(schema.classes)
+            .where(eq(schema.classes.teacherId, session.session.userId));
 
-    return { session: session.session, role: existingRoleResult[0]?.role, classes: classes };
+        return {
+            role: existingRoleResult[0]?.role,
+            classes: classes,
+        };
+    } else if (existingRoleResult[0]?.role === "student") {
+        const stdclasses = await db // Fetch classes for students
+            .select() // Select all columns
+            .from(schema.classes)
+            .innerJoin(
+                schema.enrollments,
+                eq(schema.classes.id, schema.enrollments.classId)
+            )
+            .where(eq(schema.enrollments.studentId, session.session.userId));
+
+        return {
+            role: existingRoleResult[0]?.role,
+            classes: stdclasses,
+        };
+    }
 });
 
 export const Route = createFileRoute("/dashboard")({
     // beforeLoad: async () => await authStateFn(),
-    loader: async () => await authStateFn(),
+    loader: async () => {
+        const authData = await authStateFn();
+        return authData;
+    },
     component: RouteComponent,
 });
 
 function RouteComponent() {
     const { data: session } = authClient.useSession();
-    const { role: role, classes } = Route.useLoaderData();
+    const loaderData = Route.useLoaderData();
     const navigate = useNavigate();
+
+    if (!loaderData) {
+        return <div>Loading...</div>;
+    }
+
+    const { role, classes } = loaderData;
+
+    // Normalize classes for students (extract .classes property)
+    const normalizedClasses =
+        role === "student"
+            ? classes.map((item: any) => item.classes)
+            : classes;
 
     return (
         <>
@@ -73,11 +108,18 @@ function RouteComponent() {
                         >
                             Sign Out
                         </button>
+                        {role === "teacher" && (
+                            <div>
+                                <AddClass />
+                            </div>
+                        )}
+                        {role === "student" && (
+                            <div>
+                                <JoinClass />
+                            </div>
+                        )}
                         <div>
-                            <AddClass />
-                        </div>
-                        <div>
-                            <Classes classes={classes} />
+                            <Classes classes={normalizedClasses} />
                         </div>
                     </>
                 )}
