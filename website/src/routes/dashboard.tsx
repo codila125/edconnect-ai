@@ -41,7 +41,7 @@ const authStateFn = createServerFn({
 });
 
 export const Route = createFileRoute("/dashboard")({
-    beforeLoad: async () => await authStateFn(),
+    // beforeLoad: async () => await authStateFn(),
     loader: async () => await authStateFn(),
     component: RouteComponent,
 });
