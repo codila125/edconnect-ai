@@ -59,15 +59,57 @@ def get_db_connection():
     return conn
 
 # Unified prompt for summarization
-PROMPT_TEMPLATE = """
-You are a super-capable AI assistant. Given the following content, generate a concise summary that captures:
-- Main ideas or steps
-- Any tables or mathematical expressions described
-- Hand-written annotations if present
-Output ONLY valid JSON with:
-{{"page": <page_number>, "summary": "<your_summary>"}}
-Content:
-"""
+# Unified prompt for summarization
+import textwrap
+
+SUMMARY_SENTENCE_MIN = 3
+SUMMARY_SENTENCE_MAX = 6
+SUMMARY_WORDS = 150
+
+PROMPT_TEMPLATE = textwrap.dedent(f"""
+You are an expert summarizer for scientific and technical documents. Your primary goal is to provide concise, accurate, and contextually rich summaries. You must adhere strictly to the information provided in the input text and image descriptions, without introducing any external knowledge or fabricating details.
+
+**Task:** Summarize the following document.
+
+**Input Document (including text, equations, and image descriptions):**
+<START_DOCUMENT>
+[Insert the pre-processed document text here. This includes:
+1.  All textual content from the document.
+2.  LaTeX representations of all equations (e.g., $$E=mc^2$$ for display equations, $(F=ma)$ for inline equations).
+3.  Concise, factual descriptions of each relevant image. Each image description should be clearly labeled and positioned logically within the text it relates to. For example:
+    * `[Image 1: A graph showing the exponential growth of a bacterial population over 24 hours. The x-axis represents time (hours) and the y-axis represents population size (log scale).]`
+    * `[Image 2: A diagram illustrating the components of a novel quantum computing architecture, including qubits, control lines, and a cryogenic dilution refrigerator.]`
+]
+<END_DOCUMENT>
+
+**Specific Instructions for Summarization:**
+
+1.  **Conciseness and Length:** Provide a summary of approximately {SUMMARY_SENTENCE_MIN} to {SUMMARY_SENTENCE_MAX} sentences, or about {SUMMARY_WORDS} words. Focus on the core findings, methodologies, and significant conclusions.
+2.  **Factual Accuracy and No Hallucination:**
+    * **Crucial:** Do NOT invent any information, details, or theories not explicitly stated in the provided `Input Document`.
+    * If a concept, detail, or value is not present in the document, state that the information is not provided or omit it. Do not guess.
+    * Every statement in the summary must be directly supported by the `Input Document`.
+3.  **Context Adherence:** Ensure the summary stays strictly within the context of the `Input Document`. Do not bring in outside general knowledge.
+4.  **Equation Handling:**
+    * When an equation is central to a key finding or methodology, explain its *purpose*, *significance*, and the *variables involved* in a clear, concise manner.
+    * If the exact form of the equation is critical for comprehension and it is concise, you may include its LaTeX representation. Otherwise, describe its conceptual meaning.
+    * Example: "Equation (1) defines the relationship between force ($F$), mass ($m$), and acceleration ($a$), highlighting the direct proportionality between force and acceleration given a constant mass."
+5.  **Image Summarization:**
+    * Integrate information from the `Image Descriptions` into the summary only if it contributes significantly to understanding the document's main points.
+    * Briefly explain what the image illustrates and its relevance to the surrounding text. Do not just list image titles.
+6.  **Language and Tone:** Use clear, formal, and objective language. Avoid colloquialisms or subjective interpretations.
+7.  **Structure:** Organize the summary logically, perhaps starting with the main objective/problem, followed by key methods, results, and conclusions.
+
+**Example (Optional - provide 1-2 good examples of summaries for similar document types, including how equations and images are summarized):**
+
+**Example Document:**
+... (Example text with equations and image descriptions) ...
+**Example Summary:**
+... (A perfect summary following all guidelines) ...
+
+**Please provide the summary now.**
+
+""")
 
 # Function to call Ollama via REST API
 def call_ollama(prompt: str, model: str = "qwen2.5vl:7b") -> str:
@@ -118,17 +160,24 @@ def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str = "qw
         raw_response = call_ollama(prompt, model)
 
         try:
-            summary = json.loads(raw_response)
+            response_data = json.loads(raw_response)
+            page_summary = response_data.get("summary", "").strip()
         except json.JSONDecodeError:
-            summary = {"page": i, "summary": raw_response.strip()}
+            page_summary = raw_response.strip()
 
+        summary = {"page": i, "summary": page_summary}
         summaries.append(summary)
-        
-        # Store in database
+
+        # Only insert if this page hasn't been summarized yet
         cursor.execute(
-            "INSERT INTO summaries (pdf_url, model, page_number, summary) VALUES (?, ?, ?, ?)",
-            (pdf_url, model, i, summary["summary"])
+            "SELECT 1 FROM summaries WHERE pdf_url = ? AND page_number = ?",
+            (pdf_url, i)
         )
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO summaries (pdf_url, model, page_number, summary) VALUES (?, ?, ?, ?)",
+                (pdf_url, model, i, page_summary)
+            )
 
     # Store document record
     cursor.execute(
