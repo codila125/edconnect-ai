@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import AddContent from "@/components/add-content";
 import ChatModule from "@/components/chat";
-
+import { createServerFn } from "@tanstack/react-start";
+import { getWebRequest } from "@tanstack/react-start/server";
+import { auth } from "@/lib/auth/auth";
 interface Content {
   id: string;
   title: string;
@@ -17,19 +19,37 @@ interface ApiResponse {
 }
 
 
+const authStateFn = createServerFn({
+    method: "GET", // HTTP method to use
+    response: "data", // Response handling mode
+}).handler(async () => {
+    const request = getWebRequest();
+    if (!request) {
+        throw new Error("Unauthorized");
+    }
+
+    const session = await auth.api.getSession(request);
+
+    return { session: session };
+});
 
 export const Route = createFileRoute("/contents/$classId")({
+  loader: async () => {
+    const { session } = await authStateFn();
+    return { session };
+  },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const params = Route.useParams();
+  const { session } = Route.useLoaderData();
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  console.log("RouteComponent session:", session?.user.id);
   // You'll need to get the current user ID somehow - this is just an example
-  const [currentUserId, setCurrentUserId] = useState(`user_${Date.now()}`);
+  const [currentUserId, setCurrentUserId] = useState(session?.user.id || "");
   
   useEffect(() => {
     // Set user ID from localStorage after component mounts
@@ -100,10 +120,8 @@ function RouteComponent() {
 
   return (
     <>
-      <div>Hello "/contents/$classId"!</div>
-      
       <div>
-        <h1>Contents for Class {params.classId}</h1>
+        <h1>Contents for Class</h1>
         {contents.length > 0 ? (
           <ul>
             {contents.map((content) => (
@@ -117,7 +135,6 @@ function RouteComponent() {
               >
                 <h3>{content.title}</h3>
                 <p>{content.body}</p>
-                <small>Class ID: {content.classId}</small>
               </li>
             ))}
           </ul>
@@ -127,8 +144,9 @@ function RouteComponent() {
       </div>
 
       <div>
-        <h2>Add New Content</h2>
-        <AddContent classId={params.classId} />
+        {session?.user.role === "teacher" && (<>
+          <AddContent classId={params.classId} />
+        </>)}
       </div>
 
       {/* Add the Chat Module */}
@@ -137,7 +155,7 @@ function RouteComponent() {
         <ChatModule 
           classId={params.classId}
           currentUserId={currentUserId}
-          currentUserName="Your Name" // You can make this dynamic
+          currentUserName={session?.user.name || "Your Name"}
         />
       </div>
     </>

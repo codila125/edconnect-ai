@@ -117,7 +117,6 @@ const ChatModule: React.FC<ChatModuleProps> = ({
 
   return (
     <div>
-      <h3>Class Chat - {classId}</h3>
       
       <div>
         {messages.length === 0 ? (

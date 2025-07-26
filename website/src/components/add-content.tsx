@@ -147,14 +147,14 @@ const Upload = ({ classId }: { classId: string }) => {
                             "+"
                         )}
                     </button>
-                    <div>
+                    {/* <div>
                         material id
                         {materialId && <span>{materialId}</span>}
                     </div>
                     <div>
                         class id
                         {classId && <span>{classId}</span>}
-                    </div>
+                    </div> */}
                 </div>
             </form>
         </>
