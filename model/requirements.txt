@@ -5,11 +5,12 @@ uvicorn[standard]==0.24.0
 # Database dependencies
 sqlalchemy==2.0.23
 asyncpg==0.29.0
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9  # Not needed for async operations
 
 # PDF processing dependencies
 PyPDF2==3.0.1
 PyMuPDF==1.23.8
+fitz==0.0.1.dev2
 
 # OCR dependencies
 easyocr==1.7.0

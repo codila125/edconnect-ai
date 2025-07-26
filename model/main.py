@@ -164,29 +164,49 @@ async def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str
     # Combine all page summaries into one comprehensive summary
     combined_summary = "\n\n".join(page_summaries)
     
-    # Update the database - find content with matching PDF URL and update summary
+    # Update the database - find material ID by URL and update all contents with that material_id
     if db:
         try:
-            # First, find the material with the PDF URL
-            material_query = select(Material).where(Material.url == pdf_url)
-            result = await db.execute(material_query)
-            material = result.scalar_one_or_none()
+            print(f"[Info] Looking for material with URL: {pdf_url}")
             
-            if material:
-                # Update all contents that reference this material
-                update_query = update(Content).where(
-                    Content.material_id == material.id
-                ).values(summary=combined_summary)
+            # Use a fresh transaction to avoid connection issues
+            async with db.begin():
+                # First, find the material ID with the PDF URL
+                material_query = select(Material.id, Material.name).where(Material.url == pdf_url)
+                result = await db.execute(material_query)
+                material = result.first()
                 
-                await db.execute(update_query)
-                await db.commit()
-                print(f"[Info] Updated summary for material: {material.name}")
-            else:
-                print(f"[Warning] No material found with URL: {pdf_url}")
+                if material:
+                    material_id = material.id
+                    material_name = material.name
+                    print(f"[Info] Found material ID: {material_id}, Name: {material_name}")
+                    
+                    # Update all contents that have this material_id
+                    update_query = update(Content).where(
+                        Content.material_id == material_id
+                    ).values(summary=combined_summary)
+                    
+                    result = await db.execute(update_query)
+                    rows_updated = result.rowcount
+                    
+                    print(f"[Info] Updated {rows_updated} content records with material_id: {material_id}")
+                    
+                    if rows_updated == 0:
+                        print(f"[Warning] No content records found with material_id: {material_id}")
+                    
+                else:
+                    print(f"[Warning] No material found with URL: {pdf_url}")
+                    # Let's also check what materials exist
+                    all_materials_query = select(Material.id, Material.url, Material.name)
+                    all_materials_result = await db.execute(all_materials_query)
+                    all_materials = all_materials_result.all()
+                    print(f"[Debug] Available materials: {[(m.id, m.url, m.name) for m in all_materials]}")
                 
         except Exception as e:
             print(f"[Database Error] {str(e)}")
             await db.rollback()
+            # Don't re-raise - let the summarization still return results
+            print("[Info] Continuing despite database error...")
     
     return {
         "pdf_url": pdf_url,

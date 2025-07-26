@@ -26,9 +26,33 @@ const saveContents = createServerFn({ method: "POST" })
         };
     });
 
+// Function to trigger PDF summarization in background
+const triggerBackgroundSummarization = (pdfUrl: string) => {
+    // Fire and forget - don't await this
+    fetch(`http://localhost:8000/summarize?pdf_url=${encodeURIComponent(pdfUrl)}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log(`Background summarization started for: ${pdfUrl}`);
+        } else {
+            console.warn(`Background summarization request failed: ${response.status}`);
+        }
+    })
+    .catch(error => {
+        console.error('Background summarization error:', error);
+        // Don't throw - this is background processing
+    });
+};
+
 const Upload = ({ classId }: { classId: string }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [materialId, setMaterialId] = useState<string | null>(null);
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Upload mutation
     const uploadMutation = useMutation({
@@ -59,6 +83,7 @@ const Upload = ({ classId }: { classId: string }) => {
             });
 
             setMaterialId(saveResult.id);
+            setPdfUrl(urlData.publicUrl);
 
             return {
                 publicUrl: urlData.publicUrl,
@@ -90,10 +115,51 @@ const Upload = ({ classId }: { classId: string }) => {
         fileInputRef.current?.click();
     };
 
+    // Handle form submission
+    const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        
+        if (!materialId || !pdfUrl) {
+            alert("Please upload a PDF file first");
+            return;
+        }
+
+        setIsSubmitting(true);
+        
+        try {
+            // Get form data
+            const formData = new FormData(event.currentTarget);
+            
+            // Submit form to your existing API
+            const response = await fetch("/api/addcontents", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to add content: ${response.status}`);
+            }
+
+            // Content addition successful - start background summarization
+            triggerBackgroundSummarization(pdfUrl);
+            
+            // Show success message and reset form immediately
+            alert("Content added successfully! PDF summary will be generated in the background.");
+            event.currentTarget.reset();
+            setMaterialId(null);
+            setPdfUrl(null);
+
+        } catch (error) {
+            console.error("Form submission error:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <>
             <h1>Add Contents</h1>
-            <form method="post" action="/api/addcontents">
+            <form onSubmit={handleFormSubmit}>
                 <label>
                     Title:
                     <input type="text" name="title" required />
@@ -112,15 +178,16 @@ const Upload = ({ classId }: { classId: string }) => {
                     </select>
                 </label>
                 <br />
-                {/* <label>
-                    Deadline:
-                    <input type="datetime-local" name="deadline" />
-                </label> */}
-                <br />
                 <input type="hidden" name="materialId" value={materialId ?? ""} />
                 <input type="hidden" name="classId" value={classId ?? ""} />
 
-                <button type="submit" disabled={!materialId}>Add Content</button>
+                <button 
+                    type="submit" 
+                    disabled={!materialId || isSubmitting || uploadMutation.isPending}
+                >
+                    {isSubmitting ? "Adding Content..." : "Add Content"}
+                </button>
+                
                 <div className="flex items-center">
                     <input
                         ref={fileInputRef}
@@ -133,7 +200,7 @@ const Upload = ({ classId }: { classId: string }) => {
                     <button
                         type="button"
                         onClick={triggerFileSelect}
-                        disabled={uploadMutation.isPending}
+                        disabled={uploadMutation.isPending || isSubmitting}
                         className=""
                     >
                         {uploadMutation.isPending ? (
@@ -141,20 +208,20 @@ const Upload = ({ classId }: { classId: string }) => {
                                 <span
                                     className=""
                                     style={{ animationDelay: "0ms" }}
-                                ></span>
+                                >
+                                    Uploading...
+                                </span>
                             </div>
                         ) : (
                             "+"
                         )}
                     </button>
-                    {/* <div>
-                        material id
-                        {materialId && <span>{materialId}</span>}
-                    </div>
-                    <div>
-                        class id
-                        {classId && <span>{classId}</span>}
-                    </div> */}
+                    
+                    {materialId && (
+                        <div className="ml-2 text-sm text-green-600">
+                            ✓ PDF uploaded successfully
+                        </div>
+                    )}
                 </div>
             </form>
         </>
