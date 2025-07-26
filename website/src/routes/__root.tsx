@@ -7,6 +7,7 @@ import {
     Scripts,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import appCss from '../styles.css?url'
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,10 @@ export const Route = createRootRoute({
                 title: "ED-Connect AI",
             },
         ],
-    }),
+            links: [
+                { rel: 'stylesheet', href: appCss },
+            ],
+        }),
     component: RootComponent,
     notFoundComponent: () => <div>Not Found</div>,
     errorComponent: () => <div>Error occurred</div>,

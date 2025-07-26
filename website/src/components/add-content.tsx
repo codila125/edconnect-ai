@@ -157,74 +157,76 @@ const Upload = ({ classId }: { classId: string }) => {
     };
 
     return (
-        <>
-            <h1>Add Contents</h1>
-            <form onSubmit={handleFormSubmit}>
-                <label>
-                    Title:
-                    <input type="text" name="title" required />
-                </label>
-                <br />
-                <label>
-                    Body:
-                    <textarea name="body" required></textarea>
-                </label>
-                <br />
-                <label>
-                    Type:
-                    <select name="type" required>
+        <div className="max-w-md mx-auto p-4">
+            <h1 className="text-lg font-medium mb-4">Add Content</h1>
+            
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm mb-1">Title</label>
+                    <input 
+                        type="text" 
+                        name="title" 
+                        required 
+                        className="w-full p-2 border rounded"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm mb-1">Body</label>
+                    <textarea 
+                        name="body" 
+                        required 
+                        rows={3}
+                        className="w-full p-2 border rounded resize-none"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm mb-1">Type</label>
+                    <select 
+                        name="type" 
+                        required
+                        className="w-full p-2 border rounded"
+                    >
                         <option value="assignment">Assignment</option>
                         <option value="material">Material</option>
                     </select>
-                </label>
-                <br />
-                <input type="hidden" name="materialId" value={materialId ?? ""} />
-                <input type="hidden" name="classId" value={classId ?? ""} />
+                </div>
 
-                <button 
-                    type="submit" 
-                    disabled={!materialId || isSubmitting || uploadMutation.isPending}
-                >
-                    {isSubmitting ? "Adding Content..." : "Add Content"}
-                </button>
-                
-                <div className="flex items-center">
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="application/pdf"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                    />
-
+                <div className="flex items-center gap-2">
                     <button
                         type="button"
                         onClick={triggerFileSelect}
                         disabled={uploadMutation.isPending || isSubmitting}
-                        className=""
+                        className="px-3 py-2 border rounded text-sm disabled:opacity-50"
                     >
-                        {uploadMutation.isPending ? (
-                            <div className="flex gap-1">
-                                <span
-                                    className=""
-                                    style={{ animationDelay: "0ms" }}
-                                >
-                                    Uploading...
-                                </span>
-                            </div>
-                        ) : (
-                            "+"
-                        )}
+                        {uploadMutation.isPending ? "Uploading..." : "Choose PDF"}
                     </button>
                     
                     {materialId && (
-                        <div className="ml-2 text-sm text-green-600">
-                            ✓ PDF uploaded successfully
-                        </div>
+                        <span className="text-sm text-green-600">✓ Uploaded</span>
                     )}
                 </div>
+
+                <input type="hidden" name="materialId" value={materialId ?? ""} />
+                <input type="hidden" name="classId" value={classId ?? ""} />
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                />
+
+                <button 
+                    type="submit" 
+                    disabled={!materialId || isSubmitting || uploadMutation.isPending}
+                    className="w-full p-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                >
+                    {isSubmitting ? "Adding..." : "Add Content"}
+                </button>
             </form>
-        </>
+        </div>
     );
 };
 
