@@ -24,10 +24,31 @@ export const ServerRoute = createServerFileRoute("/api/hello/$").methods({
 
         if (!session || !session.session.userId) {
             // Check if the session is valid and userId exists
-            return new Response(JSON.stringify({ error: "Unauthorized" }), {
-                status: 401,
-                headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+                `<html>
+    <head>
+      <title>Unauthorized</title>
+      <style>
+        body { font-family: sans-serif; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .error-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 8px #0001; padding: 2rem 3rem; text-align: center; }
+        .error-title { color: #dc2626; font-size: 1.5rem; margin-bottom: 1rem; }
+        .error-msg { color: #334155; font-size: 1.1rem; }
+        a { display: inline-block; margin-top: 1.5rem; color: #2563eb; text-decoration: underline; }
+      </style>
+    </head>
+    <body>
+      <div class="error-box">
+        <div class="error-title">Unauthorized</div>
+        <div class="error-msg">You are not authorized to access this page.</div>
+        <a href="/">Go to Home</a>
+      </div>
+    </body>
+  </html>`,
+                {
+                    status: 401,
+                    headers: { "Content-Type": "text/html" },
+                }
+            );
         }
 
         const role = params._splat; // Extract the role from the request parameters
@@ -48,30 +69,66 @@ export const ServerRoute = createServerFileRoute("/api/hello/$").methods({
 
         if (existingRole === "teacher" || existingRole === "student") {
             return new Response(
-                JSON.stringify({
-                    error: `User already has the role ${existingRole}`, // If the user already has a role,
-                    // return an error
-                }),
+                `<html>
+    <head>
+      <title>Role Assignment Error</title>
+      <style>
+        body { font-family: sans-serif; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .error-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 8px #0001; padding: 2rem 3rem; text-align: center; }
+        .error-title { color: #dc2626; font-size: 1.5rem; margin-bottom: 1rem; }
+        .error-msg { color: #334155; font-size: 1.1rem; }
+        a { display: inline-block; margin-top: 1.5rem; color: #2563eb; text-decoration: underline; }
+      </style>
+    </head>
+    <body>
+      <div class="error-box">
+        <div class="error-title">Role Assignment Error</div>
+        <div class="error-msg">User already has the role <b>${existingRole}</b>.</div>
+        <a href="/dashboard">Go to Dashboard</a>
+      </div>
+    </body>
+  </html>`,
                 {
                     status: 400,
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "text/html" },
                 }
             );
         }
 
         if (role !== "teacher" && role !== "student") {
             // Validate the role to be assigned
-            return new Response(JSON.stringify({ error: "Invalid role" }), {
-                status: 400,
-                headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+                `<html>
+    <head>
+      <title>Invalid Role</title>
+      <style>
+        body { font-family: sans-serif; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .error-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 8px #0001; padding: 2rem 3rem; text-align: center; }
+        .error-title { color: #dc2626; font-size: 1.5rem; margin-bottom: 1rem; }
+        .error-msg { color: #334155; font-size: 1.1rem; }
+        a { display: inline-block; margin-top: 1.5rem; color: #2563eb; text-decoration: underline; }
+      </style>
+    </head>
+    <body>
+      <div class="error-box">
+        <div class="error-title">Invalid Role</div>
+        <div class="error-msg">The role you tried to assign is not allowed.</div>
+        <a href="/dashboard">Go to Dashboard</a>
+      </div>
+    </body>
+  </html>`,
+                {
+                    status: 400,
+                    headers: { "Content-Type": "text/html" },
+                }
+            );
         }
 
         await sendRole({ role, userId: session.session.userId }); // Call the sendRole function to
         // update the user's role in the database
         // wait for the role to be updated
 
-        redirect({
+        return redirect({
             to: `/dashboard`, // Redirect to the dashboard after assigning the role
         });
     },

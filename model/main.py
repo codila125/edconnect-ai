@@ -3,62 +3,22 @@ from pydantic import BaseModel
 import requests, io, json, argparse, os
 from PyPDF2 import PdfReader
 import easyocr
-import sqlite3
 from datetime import datetime
 from typing import List, Optional
-import textwrap  # Already present, keep it
-from typing import Tuple  # Add this import
+import textwrap
+from typing import Tuple
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update
+from models import User, Content, Material
+from database import get_db, Base, engine
 
 # FastAPI instance
 app = FastAPI()
 
-# Database setup
-DATABASE_PATH = "pdf_summaries.db"
-
-def init_database():
-    """Initialize SQLite database with required tables"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    # Create summaries table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pdf_url TEXT NOT NULL,
-            model TEXT NOT NULL,
-            page_number INTEGER NOT NULL,
-            summary TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Create documents table for tracking processed PDFs
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS documents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pdf_url TEXT UNIQUE NOT NULL,
-            model TEXT NOT NULL,
-            total_pages INTEGER NOT NULL,
-            status TEXT DEFAULT 'completed',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-# Initialize database on startup
-init_database()
-
-def get_db_connection():
-    """Get database connection"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # This allows dict-like access to rows
-    return conn
+# Initialize OCR
+ocr_reader = easyocr.Reader(['en'], gpu=False)
 
 # Unified prompt for summarization
-import textwrap
-
 SUMMARY_SENTENCE_MIN = 3
 SUMMARY_SENTENCE_MAX = 6
 SUMMARY_WORDS = 150
@@ -107,7 +67,6 @@ Summary: The budget distribution pie chart shows Department A receives the large
 **Please provide the summary now.**
 """)
 
-
 # Function to call Ollama via REST API
 def call_ollama(prompt: str, model: str = "qwen2.5vl:7b") -> str:
     try:
@@ -125,16 +84,13 @@ def call_ollama(prompt: str, model: str = "qwen2.5vl:7b") -> str:
         print(f"[Ollama Exception] {str(e)}")
         return f"[Exception] {str(e)}"
 
-# Initialize OCR
-ocr_reader = easyocr.Reader(['en'], gpu=False)
-
 def get_image_from_pdf_page(pdf_bytes: bytes, page_num: int) -> bytes:
     """Convert a PDF page to PNG bytes using PyMuPDF with higher DPI"""
     try:
         import fitz
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         page = doc.load_page(page_num - 1)
-        pix = page.get_pixmap(dpi=300)  # Increased from 200 to 300 DPI
+        pix = page.get_pixmap(dpi=300)
         return pix.tobytes("png")
     except ImportError:
         raise RuntimeError("PyMuPDF (fitz) is not installed. Please install it with 'pip install PyMuPDF'")
@@ -155,25 +111,15 @@ def extract_text_with_ocr(img_bytes: bytes) -> Tuple[str, list]:
     
     return "\n".join(ocr_text), clean_text
 
-# PDF summarization logic with database storage
-def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str = "qwen2.5vl:7b") -> list[dict]:
+# PDF summarization logic with database update
+async def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str = "qwen2.5vl:7b", db: AsyncSession = None) -> dict:
+    """
+    Summarize PDF and update the summary field in contents table for matching PDF URL
+    """
     pdf = PdfReader(io.BytesIO(pdf_bytes))
-    summaries = []
+    page_summaries = []
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Check if PDF already processed
-    cursor.execute("SELECT * FROM documents WHERE pdf_url = ?", (pdf_url,))
-    existing_doc = cursor.fetchone()
-    
-    if existing_doc:
-        cursor.execute("SELECT page_number, summary FROM summaries WHERE pdf_url = ? ORDER BY page_number", (pdf_url,))
-        existing_summaries = cursor.fetchall()
-        conn.close()
-        return [{"page": row["page_number"], "summary": row["summary"]} for row in existing_summaries]
-
-    # Process new PDF - FIXED INDENTATION HERE
+    # Process each page
     for i, page in enumerate(pdf.pages, start=1):
         text = page.extract_text() or ""
         
@@ -213,30 +159,64 @@ def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str = "qw
         elif not page_summary.strip():
             page_summary = "This page appears to be intentionally left blank"
 
-        summary = {"page": i, "summary": page_summary}
-        summaries.append(summary)
+        page_summaries.append(f"Page {i}: {page_summary}")
 
-        # Only insert if this page hasn't been summarized yet
-        cursor.execute(
-            "SELECT 1 FROM summaries WHERE pdf_url = ? AND page_number = ?",
-            (pdf_url, i)
-        )
-        if not cursor.fetchone():
-            cursor.execute(
-                "INSERT INTO summaries (pdf_url, model, page_number, summary) VALUES (?, ?, ?, ?)",
-                (pdf_url, model, i, page_summary)
-            )
+    # Combine all page summaries into one comprehensive summary
+    combined_summary = "\n\n".join(page_summaries)
+    
+    # Update the database - find material ID by URL and update all contents with that material_id
+    if db:
+        try:
+            print(f"[Info] Looking for material with URL: {pdf_url}")
+            
+            # Use a fresh transaction to avoid connection issues
+            async with db.begin():
+                # First, find the material ID with the PDF URL
+                material_query = select(Material.id, Material.name).where(Material.url == pdf_url)
+                result = await db.execute(material_query)
+                material = result.first()
+                
+                if material:
+                    material_id = material.id
+                    material_name = material.name
+                    print(f"[Info] Found material ID: {material_id}, Name: {material_name}")
+                    
+                    # Update all contents that have this material_id
+                    update_query = update(Content).where(
+                        Content.material_id == material_id
+                    ).values(summary=combined_summary)
+                    
+                    result = await db.execute(update_query)
+                    rows_updated = result.rowcount
+                    
+                    print(f"[Info] Updated {rows_updated} content records with material_id: {material_id}")
+                    
+                    if rows_updated == 0:
+                        print(f"[Warning] No content records found with material_id: {material_id}")
+                    
+                else:
+                    print(f"[Warning] No material found with URL: {pdf_url}")
+                    # Let's also check what materials exist
+                    all_materials_query = select(Material.id, Material.url, Material.name)
+                    all_materials_result = await db.execute(all_materials_query)
+                    all_materials = all_materials_result.all()
+                    print(f"[Debug] Available materials: {[(m.id, m.url, m.name) for m in all_materials]}")
+                
+        except Exception as e:
+            print(f"[Database Error] {str(e)}")
+            await db.rollback()
+            # Don't re-raise - let the summarization still return results
+            print("[Info] Continuing despite database error...")
+    
+    return {
+        "pdf_url": pdf_url,
+        "total_pages": len(pdf.pages),
+        "summary": combined_summary,
+        "model_used": model,
+        "processed_at": datetime.utcnow().isoformat()
+    }
 
-    # Store document record
-    cursor.execute(
-        "INSERT INTO documents (pdf_url, model, total_pages) VALUES (?, ?, ?)",
-        (pdf_url, model, len(pdf.pages))
-    )
-    conn.commit()
-    conn.close()
-    return summaries
-
-# Updated function using PyMuPDF for OCR
+# Updated function for standalone use (without database)
 def summarize_pdf_bytes(pdf_bytes: bytes, model: str = "qwen2.5vl:7b") -> list[dict]:
     pdf = PdfReader(io.BytesIO(pdf_bytes))
     summaries = []
@@ -271,145 +251,105 @@ def summarize_pdf_bytes(pdf_bytes: bytes, model: str = "qwen2.5vl:7b") -> list[d
     return summaries
 
 # API models
-class Summary(BaseModel):
-    page: int
-    summary: str
-
-class Document(BaseModel):
-    id: int
+class SummaryResponse(BaseModel):
     pdf_url: str
-    model: str
     total_pages: int
-    status: str
-    created_at: str
+    summary: str
+    model_used: str
+    processed_at: str
 
-class DocumentSummary(BaseModel):
-    document: Document
-    summaries: List[Summary]
+class ContentInfo(BaseModel):
+    id: str
+    title: str
+    summary: Optional[str]
+    material_url: str
 
 # FastAPI endpoints
-@app.get("/summarize", response_model=List[Summary])
-async def api_summarize(pdf_url: str = Query(..., description="URL to a PDF"),
-                        model: str = Query("qwen2.5vl:7b", description="Ollama model name")):
-    """Summarize a PDF and store results in database"""
-    headers = {"User-Agent": "Mozilla/5.0"}  # some servers block non-browser agents
+@app.get("/summarize", response_model=SummaryResponse)
+async def api_summarize(
+    pdf_url: str = Query(..., description="URL to a PDF"),
+    model: str = Query("qwen2.5vl:7b", description="Ollama model name"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Summarize a PDF and update the summary field in contents table"""
+    headers = {"User-Agent": "Mozilla/5.0"}
     resp = requests.get(pdf_url, headers=headers)
 
     if resp.status_code != 200:
         raise HTTPException(
-        400,
-        f"Failed to fetch PDF from URL: {pdf_url}, "
-        f"Status Code: {resp.status_code}, Content: {resp.content[:100]}"
-    )
+            400,
+            f"Failed to fetch PDF from URL: {pdf_url}, "
+            f"Status Code: {resp.status_code}, Content: {resp.content[:100]}"
+        )
 
-    summaries = summarize_pdf_bytes_with_db(resp.content, pdf_url, model)
-    return summaries
+    result = await summarize_pdf_bytes_with_db(resp.content, pdf_url, model, db)
+    return result
 
-@app.get("/documents", response_model=List[Document])
-async def get_all_documents():
-    """Get all processed documents"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM documents ORDER BY created_at DESC")
-    documents = cursor.fetchall()
-    conn.close()
+@app.get("/contents", response_model=List[ContentInfo])
+async def get_all_contents(db: AsyncSession = Depends(get_db)):
+    """Get all contents with their material URLs"""
+    query = select(Content, Material).join(Material, Content.material_id == Material.id)
+    result = await db.execute(query)
+    contents = result.all()
     
     return [
-        Document(
-            id=doc["id"],
-            pdf_url=doc["pdf_url"],
-            model=doc["model"],
-            total_pages=doc["total_pages"],
-            status=doc["status"],
-            created_at=doc["created_at"]
+        ContentInfo(
+            id=content.Content.id,
+            title=content.Content.title,
+            summary=content.Content.summary,
+            material_url=content.Material.url
         )
-        for doc in documents
+        for content in contents
     ]
 
-@app.get("/documents/{document_id}", response_model=DocumentSummary)
-async def get_document_with_summaries(document_id: int):
-    """Get a specific document with its summaries"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
+@app.get("/contents/{content_id}", response_model=ContentInfo)
+async def get_content_by_id(content_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a specific content with its material URL"""
+    query = select(Content, Material).join(Material, Content.material_id == Material.id).where(Content.id == content_id)
+    result = await db.execute(query)
+    content = result.first()
     
-    # Get document
-    cursor.execute("SELECT * FROM documents WHERE id = ?", (document_id,))
-    document = cursor.fetchone()
+    if not content:
+        raise HTTPException(404, "Content not found")
     
-    if not document:
-        conn.close()
-        raise HTTPException(404, "Document not found")
-    
-    # Get summaries
-    cursor.execute("SELECT page_number, summary FROM summaries WHERE pdf_url = ? ORDER BY page_number", 
-                   (document["pdf_url"],))
-    summaries = cursor.fetchall()
-    conn.close()
-    
-    return DocumentSummary(
-        document=Document(
-            id=document["id"],
-            pdf_url=document["pdf_url"],
-            model=document["model"],
-            total_pages=document["total_pages"],
-            status=document["status"],
-            created_at=document["created_at"]
-        ),
-        summaries=[Summary(page=s["page_number"], summary=s["summary"]) for s in summaries]
+    return ContentInfo(
+        id=content.Content.id,
+        title=content.Content.title,
+        summary=content.Content.summary,
+        material_url=content.Material.url
     )
 
-@app.get("/summaries/{pdf_url:path}")
-async def get_summaries_by_url(pdf_url: str):
-    """Get summaries for a specific PDF URL"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT page_number, summary FROM summaries WHERE pdf_url = ? ORDER BY page_number", 
-                   (pdf_url,))
-    summaries = cursor.fetchall()
-    conn.close()
+@app.get("/contents/by-url/{pdf_url:path}")
+async def get_contents_by_pdf_url(pdf_url: str, db: AsyncSession = Depends(get_db)):
+    """Get all contents that reference a specific PDF URL"""
+    query = select(Content, Material).join(Material, Content.material_id == Material.id).where(Material.url == pdf_url)
+    result = await db.execute(query)
+    contents = result.all()
     
-    if not summaries:
-        raise HTTPException(404, "No summaries found for this PDF URL")
+    if not contents:
+        raise HTTPException(404, "No contents found for this PDF URL")
     
-    return [{"page": s["page_number"], "summary": s["summary"]} for s in summaries]
-
-@app.delete("/documents/{document_id}")
-async def delete_document(document_id: int):
-    """Delete a document and its summaries"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Get document to find PDF URL
-    cursor.execute("SELECT pdf_url FROM documents WHERE id = ?", (document_id,))
-    document = cursor.fetchone()
-    
-    if not document:
-        conn.close()
-        raise HTTPException(404, "Document not found")
-    
-    # Delete summaries first
-    cursor.execute("DELETE FROM summaries WHERE pdf_url = ?", (document["pdf_url"],))
-    
-    # Delete document
-    cursor.execute("DELETE FROM documents WHERE id = ?", (document_id,))
-    
-    conn.commit()
-    conn.close()
-    
-    return {"message": "Document and summaries deleted successfully"}
+    return [
+        ContentInfo(
+            id=content.Content.id,
+            title=content.Content.title,
+            summary=content.Content.summary,
+            material_url=content.Material.url
+        )
+        for content in contents
+    ]
 
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
     return {
-        "message": "PDF Summarization API",
+        "message": "PDF Summarization API with Neon PostgreSQL",
         "endpoints": {
             "GET /": "This endpoint",
-            "GET /summarize?pdf_url=<url>&model=<model>": "Summarize a PDF",
-            "GET /documents": "Get all processed documents",
-            "GET /documents/{id}": "Get document with summaries",
-            "GET /summaries/{pdf_url}": "Get summaries by PDF URL",
-            "DELETE /documents/{id}": "Delete document and summaries"
+            "GET /summarize?pdf_url=<url>&model=<model>": "Summarize a PDF and update database",
+            "GET /contents": "Get all contents with material URLs",
+            "GET /contents/{id}": "Get content by ID",
+            "GET /contents/by-url/{pdf_url}": "Get contents by PDF URL"
         }
     }
 

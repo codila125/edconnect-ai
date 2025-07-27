@@ -22,6 +22,7 @@
     "dependencies": {
         "@neondatabase/serverless": "^1.0.1",
         "@supabase/supabase-js": "^2.52.1",
+        "@tailwindcss/vite": "^4.1.11",
         "@tanstack/react-query": "^5.83.0",
         "@tanstack/react-router": "^1.129.8",
         "@tanstack/react-start": "^1.129.8",
@@ -30,6 +31,7 @@
         "drizzle-orm": "^0.44.3",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
+        "tailwindcss": "^4.1.11",
         "vite": "^7.0.6"
     }
 }
