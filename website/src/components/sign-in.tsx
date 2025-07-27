@@ -20,7 +20,7 @@ export default function SignIn() {
                 authClient.signIn.social({
                   provider: "google",
                   errorCallbackURL: "/error",
-                  callbackURL: "/api/hello/teacher",
+                  callbackURL: "/dashboard",
                   newUserCallbackURL: "/api/hello/teacher",
                   disableRedirect: false,
                 })
@@ -42,7 +42,7 @@ export default function SignIn() {
                 authClient.signIn.social({
                   provider: "google",
                   errorCallbackURL: "/error",
-                  callbackURL: "/api/hello/student",
+                  callbackURL: "/dashboard",
                   newUserCallbackURL: "/api/hello/student",
                   disableRedirect: false,
                 })

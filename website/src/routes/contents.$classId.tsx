@@ -38,6 +38,11 @@ const authStateFn = createServerFn({
         throw new Error("Unauthorized");
     }
 
+    // Get classId from the URL params
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const classId = pathParts[pathParts.length - 1];
+
     const userId = await db
     .select({ id: schema.session.userId })
     .from(schema.session)
@@ -49,29 +54,34 @@ const authStateFn = createServerFn({
     }
 
     const userIdValue = userId[0]?.id;
-    const classId = await db
+    
+    // Check if user is enrolled in this class
+    const classEnrollment = await db
     .select({ id: schema.enrollments.classId })
     .from(schema.enrollments)
     .where(eq(schema.enrollments.studentId, userIdValue))
     .execute();
 
-    if (!classId || classId.length === 0) {
-       const classId2 = await db
+    // If not enrolled, check if user is the teacher of this class
+    if (!classEnrollment || classEnrollment.length === 0 || !classEnrollment.some(e => e.id === classId)) {
+       const teacherClass = await db
        .select({ id: schema.classes.id })
        .from(schema.classes)
        .where(eq(schema.classes.teacherId, userIdValue))
        .execute();
-       console.log("Class ID (Teacher):", classId2);
-       return { session: session, urls: [] };
+       
+       if (!teacherClass || teacherClass.length === 0 || !teacherClass.some(c => c.id === classId)) {
+           return { session: session, urls: [] };
+       }
     }
 
-    // Get all contents for the class
+    // Get all contents for the specific class
     const contentsData = await db
     .select({ 
         materialId: schema.contents.materialId 
     })
     .from(schema.contents)
-    .where(eq(schema.contents.classId, classId[0]?.id))
+    .where(eq(schema.contents.classId, classId))
     .execute();
 
     if (!contentsData || contentsData.length === 0) {
@@ -100,6 +110,7 @@ export const Route = createFileRoute("/contents/$classId")({
       return { session: undefined, urls: [] };
     }
     const { session, urls } = result;
+
     return { session, urls };
   },
   component: RouteComponent,

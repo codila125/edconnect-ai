@@ -46,6 +46,11 @@ const Classes = ({ classes }: { classes: classes[] }) => {
                   </span>
                 </div>
 
+                {/* Class Code */}
+                <div className="mt-2 text-sm text-slate-500">
+                  <span className="font-medium text-slate-700">Class Code:</span> {cls.classCode}
+                </div>
+
                 {/* Hover Arrow */}
                 <div className="flex items-center justify-end mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="flex items-center space-x-2 text-blue-600">
