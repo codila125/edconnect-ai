@@ -11,7 +11,10 @@ export const ServerRoute = createServerFileRoute("/api/joinclass").methods({
         const formData = await request.formData();
         const code = formData.get("code") as string;
 
-        const classID = await db.select().from(schema.classes).where(eq(schema.classes.classCode, code));
+        const classID = await db
+            .select()
+            .from(schema.classes)
+            .where(eq(schema.classes.classCode, code));
 
         const session = await auth.api.getSession({
             // Get the session from the request
@@ -42,4 +45,3 @@ export const ServerRoute = createServerFileRoute("/api/joinclass").methods({
         });
     },
 });
-

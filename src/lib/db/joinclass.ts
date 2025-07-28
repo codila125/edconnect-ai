@@ -14,4 +14,3 @@ export default async function joinClass({
     });
     return console.log(`User ${userId} joined class ${classId} successfully`);
 }
-

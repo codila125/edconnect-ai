@@ -76,7 +76,9 @@ export const classes = pgTable("classes", {
     classCode: text("class_code")
         .notNull()
         .unique()
-        .$defaultFn(() => Math.floor(100000 + Math.random() * 900000).toString()), // 6-digit code
+        .$defaultFn(() =>
+            Math.floor(100000 + Math.random() * 900000).toString()
+        ), // 6-digit code
     description: text("description"),
     teacherId: text("teacher_id")
         .notNull()
@@ -84,10 +86,8 @@ export const classes = pgTable("classes", {
     createdAt: timestamp("created_at")
         .$defaultFn(() => /* @__PURE__ */ new Date())
         .notNull(),
-    activeStart: text("active_start")
-        .notNull(),
-    activeEnd: text("active_end")
-        .notNull(),
+    activeStart: text("active_start").notNull(),
+    activeEnd: text("active_end").notNull(),
 });
 
 export const enrollments = pgTable("enrollments", {
@@ -129,4 +129,3 @@ export const materials = pgTable("materials", {
     url: text("url").notNull(),
     name: text("name").notNull(),
 });
-

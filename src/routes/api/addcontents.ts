@@ -8,7 +8,7 @@ export const ServerRoute = createServerFileRoute("/api/addcontents").methods({
         const title = formData.get("title") as string;
         const body = formData.get("body") as string;
         const type = formData.get("type") as string;
-        const deadline =  "No Deadline";
+        const deadline = "No Deadline";
         const materialId = formData.get("materialId") as string;
         const classId = formData.get("classId") as string;
         console.log({ title, body, type, deadline, materialId, classId });

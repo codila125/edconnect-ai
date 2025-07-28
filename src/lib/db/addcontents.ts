@@ -27,7 +27,7 @@ export default async function addContents({
         title,
         body,
         type: type as "assignment" | "material",
-        deadline: deadline ? deadline : "No Deadline", // Default to "No Deadline" if not provided  
+        deadline: deadline ? deadline : "No Deadline", // Default to "No Deadline" if not provided
         materialId,
     });
     console.log(`Content ${title} added successfully`);
