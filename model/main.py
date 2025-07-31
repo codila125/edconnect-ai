@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from models import User, Content, Material
 from database import get_db, Base, engine
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+MODEL = os.getenv("MODEL")
 # FastAPI instance
 app = FastAPI()
 
@@ -68,7 +72,7 @@ Summary: The budget distribution pie chart shows Department A receives the large
 """)
 
 # Function to call Ollama via REST API
-def call_ollama(prompt: str, model: str = "qwen2.5vl:7b") -> str:
+def call_ollama(prompt: str, model: str = MODEL) -> str:
     try:
         res = requests.post(
             "http://localhost:11434/api/generate",
@@ -112,7 +116,7 @@ def extract_text_with_ocr(img_bytes: bytes) -> Tuple[str, list]:
     return "\n".join(ocr_text), clean_text
 
 # PDF summarization logic with database update
-async def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str = "qwen2.5vl:7b", db: AsyncSession = None) -> dict:
+async def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str = MODEL, db: AsyncSession = None) -> dict:
     """
     Summarize PDF and update the summary field in contents table for matching PDF URL
     """
@@ -217,7 +221,7 @@ async def summarize_pdf_bytes_with_db(pdf_bytes: bytes, pdf_url: str, model: str
     }
 
 # Updated function for standalone use (without database)
-def summarize_pdf_bytes(pdf_bytes: bytes, model: str = "qwen2.5vl:7b") -> list[dict]:
+def summarize_pdf_bytes(pdf_bytes: bytes, model: str = MODEL) -> list[dict]:
     pdf = PdfReader(io.BytesIO(pdf_bytes))
     summaries = []
 
@@ -268,7 +272,7 @@ class ContentInfo(BaseModel):
 @app.get("/summarize", response_model=SummaryResponse)
 async def api_summarize(
     pdf_url: str = Query(..., description="URL to a PDF"),
-    model: str = Query("qwen2.5vl:7b", description="Ollama model name"),
+    model: str = Query(MODEL, description="Ollama model name"),
     db: AsyncSession = Depends(get_db)
 ):
     """Summarize a PDF and update the summary field in contents table"""
@@ -358,7 +362,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Summarize a PDF using Ollama")
     parser.add_argument('--pdf', help='Local file path or URL to PDF')
     parser.add_argument('--output', help='Path to save summary JSON')
-    parser.add_argument('--model', default='qwen2.5vl:7b', help='Ollama model name')
+    parser.add_argument('--model', default=MODEL, help='Ollama model name')
     parser.add_argument('--serve', action='store_true', help='Run as FastAPI server')
     args = parser.parse_args()
 
