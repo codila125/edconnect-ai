@@ -1,6 +1,6 @@
 # Masterminds Hackathon Project
 
-A web application that uses AI to summarize educational materials, making them easier for students to understand. Teachers can create classes and upload PDF documents, and the application automatically generates and displays a concise summary.
+A web application that uses AI to summarize educational materials, making them easier for students to understand. Teachers can create classes and upload PDF documents, and the application automatically generates and displays a concise summary. Students can directly interact with teachers in real time for any queries.
 
 ## Features
 
@@ -8,6 +8,7 @@ A web application that uses AI to summarize educational materials, making them e
 - **Classroom Management:** Teachers can create, manage, and share virtual classrooms.
 - **AI-Powered Summarization:** Upload PDF documents via URL, and the backend generates a detailed summary using a local AI model (Ollama).
 - **Content Delivery:** Students can join classes to view uploaded materials and their AI-generated summaries.
+-**Realtime Communication** Students can directly communicate with their respective teachers.
 
 ## Tech Stack
 
@@ -25,7 +26,7 @@ A web application that uses AI to summarize educational materials, making them e
 3.  **Backend Processing:** The URL is sent to the FastAPI backend.
 4.  **AI Summarization:** The backend downloads the PDF, extracts its content (using OCR for images), and uses a local Ollama model to generate a summary.
 5.  **Database Storage:** The summary is stored in the NeonDB database.
-6.  **Content Viewing (Student):** Students join the class and can view the learning materials along with the helpful AI-generated summaries.
+6.  **Content Viewing (Student):** Students join the class and can view the learning materials along with the helpful AI-generated summaries. They can also interact after joining the class.
 
 ## Prerequisites
 
