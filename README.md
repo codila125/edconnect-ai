@@ -8,7 +8,7 @@ A web application that uses AI to summarize educational materials, making them e
 - **Classroom Management:** Teachers can create, manage, and share virtual classrooms.
 - **AI-Powered Summarization:** Upload PDF documents via URL, and the backend generates a detailed summary using a local AI model (Ollama).
 - **Content Delivery:** Students can join classes to view uploaded materials and their AI-generated summaries.
--**Realtime Communication** Students can directly communicate with their respective teachers.
+- **Realtime Communication** Students can directly communicate with their respective teachers.
 
 ## Tech Stack
 
