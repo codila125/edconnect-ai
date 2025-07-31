@@ -57,10 +57,11 @@ Before you begin, ensure you have the following installed:
     ```
 
     c. Install dependencies: `pip install -r requirements.txt`
+    d. Change to root directory`cd ..`
 
 3.  **Frontend Setup:**
     a. Install dependencies: `bun install`
-    b. Create a `.env` file in the root directory and add your project-specific keys. You can use the same `DATABASE_URL` from the backend setup.
+    b. Create a `.env` file in the root directory and add your project-specific keys.
     ```env
     # .env (root directory)
     VITE_SUPABASE_URL="your_supabase_project_url"
@@ -79,7 +80,7 @@ Before you begin, ensure you have the following installed:
 
 ## Running the Application
 
-You must start both the backend and ollama servers.
+You must start both the frontend, backend and ollama servers.
 
 1.  **Start the Ollama Server:**
     If it's already not running,
