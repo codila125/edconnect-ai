@@ -1,4 +1,4 @@
-# Masterminds Hackathon Project
+# ED-Connect AI
 
 A web application that uses AI to summarize educational materials, making them easier for students to understand. Teachers can create classes and upload PDF documents, and the application automatically generates and displays a concise summary. Students can directly interact with teachers in real time for any queries.
 
